@@ -49,13 +49,18 @@ jobs:
           VERSION: ${{ steps.version.outputs.version }}
         run: |
           TAG="v${VERSION}"
-          # origin에 태그가 이미 존재하면 건너뜀
+          # 태그 생성 (없을 때만)
           if git ls-remote --tags origin | grep -q "refs/tags/${TAG}$"; then
-            echo "Tag ${TAG} already exists, skipping release"
+            echo "Tag ${TAG} already exists, skipping tag creation"
+          else
+            git tag "$TAG"
+            git push origin "$TAG"
+          fi
+          # 릴리스 생성 (없을 때만) - 태그 생성 실패 후 재시도 가능
+          if gh release view "$TAG" --json id >/dev/null 2>&1; then
+            echo "Release ${TAG} already exists, skipping release creation"
             exit 0
           fi
-          git tag "$TAG"
-          git push origin "$TAG"
           # upstream 릴리스 노트 가져오기 - 공개 API, 인증 불필요 (없으면 링크로 대체)
           UPSTREAM_NOTES=$(curl -sf "https://api.github.com/repos/microsoft/playwright-cli/releases/tags/${TAG}" \
             | node -e "let d=''; process.stdin.on('data',c=>d+=c).on('end',()=>{ try{process.stdout.write(JSON.parse(d).body||'')}catch{} })" \
