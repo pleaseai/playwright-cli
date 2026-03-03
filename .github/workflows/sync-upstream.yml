@@ -57,7 +57,10 @@ jobs:
             git push origin "$TAG"
           fi
           # 릴리스 생성 (없을 때만) - 태그 생성 실패 후 재시도 가능
-          if gh release view "$TAG" --json id >/dev/null 2>&1; then
+          RELEASE_STATUS=$(curl -sf -o /dev/null -w "%{http_code}" \
+            -H "Authorization: Bearer ${GH_TOKEN}" \
+            "https://api.github.com/repos/${GITHUB_REPOSITORY}/releases/tags/${TAG}")
+          if [ "$RELEASE_STATUS" = "200" ]; then
             echo "Release ${TAG} already exists, skipping release creation"
             exit 0
           fi
