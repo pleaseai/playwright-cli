@@ -56,8 +56,10 @@ jobs:
           fi
           git tag "$TAG"
           git push origin "$TAG"
-          # upstream 릴리스 노트 가져오기 (없으면 링크로 대체)
-          UPSTREAM_NOTES=$(gh release view "$TAG" --repo microsoft/playwright-cli --json body --jq '.body' 2>/dev/null || echo "")
+          # upstream 릴리스 노트 가져오기 - 공개 API, 인증 불필요 (없으면 링크로 대체)
+          UPSTREAM_NOTES=$(curl -sf "https://api.github.com/repos/microsoft/playwright-cli/releases/tags/${TAG}" \
+            | node -e "let d=''; process.stdin.on('data',c=>d+=c).on('end',()=>{ try{process.stdout.write(JSON.parse(d).body||'')}catch{} })" \
+            2>/dev/null || echo "")
           if [ -z "$UPSTREAM_NOTES" ]; then
             NOTES="Synced from [microsoft/playwright-cli@${TAG}](https://github.com/microsoft/playwright-cli/releases/tag/${TAG})."
           else
