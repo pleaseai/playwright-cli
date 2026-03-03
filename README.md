@@ -27,6 +27,18 @@ npm install -g @playwright/cli@latest
 playwright-cli --help
 ```
 
+#### Claude Code Plugin
+
+Install as a Claude Code plugin:
+
+```sh
+claude
+/plugin marketplace add pleaseai/claude-code-plugins
+/plugin install playwright-cli@pleaseai
+```
+
+This automatically activates the playwright-cli skill when you ask Claude to interact with web pages, run browser automation, or test web applications.
+
 ### Installing skills
 
 Claude Code, GitHub Copilot and others will use the locally installed skills.
