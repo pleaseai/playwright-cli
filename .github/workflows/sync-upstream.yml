@@ -7,6 +7,8 @@ on:
 jobs:
   sync:
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
     steps:
       - uses: actions/checkout@v4
         with:
@@ -17,21 +19,45 @@ jobs:
           git fetch upstream
           git merge upstream/main --no-edit
       - name: Update plugin.json version from package.json
+        id: version
         run: |
           VERSION=$(node -p "require('./package.json').version")
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
           node -e "
             const fs = require('fs');
             const plugin = JSON.parse(fs.readFileSync('.claude-plugin/plugin.json', 'utf8'));
+            const changed = plugin.version !== '$VERSION';
             plugin.version = '$VERSION';
             fs.writeFileSync('.claude-plugin/plugin.json', JSON.stringify(plugin, null, 2) + '\n');
-          "
-          if git diff --quiet .claude-plugin/plugin.json; then
-            echo "No version change, skipping commit"
-          else
+            process.stdout.write(changed ? 'changed' : 'unchanged');
+          " > /tmp/version_status
+          STATUS=$(cat /tmp/version_status)
+          echo "changed=$( [ "$STATUS" = "changed" ] && echo true || echo false )" >> "$GITHUB_OUTPUT"
+          if [ "$STATUS" = "changed" ]; then
             git config user.name "github-actions[bot]"
             git config user.email "github-actions[bot]@users.noreply.github.com"
             git add .claude-plugin/plugin.json
             git commit -m "chore: sync plugin version to $VERSION"
+          else
+            echo "No version change, skipping commit"
           fi
       - name: Push changes
         run: git push
+      - name: Create tag and release
+        if: steps.version.outputs.changed == 'true'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          VERSION: ${{ steps.version.outputs.version }}
+        run: |
+          TAG="v${VERSION}"
+          # 이미 존재하는 태그라면 건너뜀
+          if git ls-remote --tags origin | grep -q "refs/tags/${TAG}$"; then
+            echo "Tag ${TAG} already exists, skipping release"
+            exit 0
+          fi
+          git tag "$TAG"
+          git push origin "$TAG"
+          gh release create "$TAG" \
+            --title "v${VERSION}" \
+            --notes "Synced from [microsoft/playwright-cli@v${VERSION}](https://github.com/microsoft/playwright-cli/releases/tag/v${VERSION})." \
+            --latest
