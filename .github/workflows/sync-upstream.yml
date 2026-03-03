@@ -16,7 +16,7 @@ jobs:
       - name: Sync upstream
         run: |
           git remote add upstream https://github.com/microsoft/playwright-cli.git || true
-          git fetch upstream
+          git fetch upstream --no-tags
           git merge upstream/main --no-edit
       - name: Update plugin.json version from package.json
         id: version
@@ -49,7 +49,7 @@ jobs:
           VERSION: ${{ steps.version.outputs.version }}
         run: |
           TAG="v${VERSION}"
-          # 태그가 이미 존재하면 건너뜀 (버전 변경 여부와 무관)
+          # origin에 태그가 이미 존재하면 건너뜀
           if git ls-remote --tags origin | grep -q "refs/tags/${TAG}$"; then
             echo "Tag ${TAG} already exists, skipping release"
             exit 0
