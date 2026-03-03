@@ -44,13 +44,12 @@ jobs:
       - name: Push changes
         run: git push
       - name: Create tag and release
-        if: steps.version.outputs.changed == 'true'
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           VERSION: ${{ steps.version.outputs.version }}
         run: |
           TAG="v${VERSION}"
-          # 이미 존재하는 태그라면 건너뜀
+          # 태그가 이미 존재하면 건너뜀 (버전 변경 여부와 무관)
           if git ls-remote --tags origin | grep -q "refs/tags/${TAG}$"; then
             echo "Tag ${TAG} already exists, skipping release"
             exit 0
